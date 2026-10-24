@@ -300,32 +300,38 @@ fn subheading(ui: &mut Ui, t: &Tokens, text: &str) {
     ui.add_space(12.0);
 }
 
-/// A card with an icon tile, a title and a line under it; true when chosen.
-fn action_card(ui: &mut Ui, t: &Tokens, icon: Icon, title: &str, sub: &str) -> bool {
-    let (r, mut resp) = ui.allocate_exact_size(vec2(260.0, 72.0), Sense::click());
-    a11y::button(&resp, title);
-    // One line each inside the card; a long translation ends with an ellipsis, in full on hover.
-    let text_w = r.width() - 72.0;
-    let (title_shown, sub_shown) = (widgets::elide_font(ui, title, text_w, semibold(12.0)), widgets::elide(ui, sub, text_w));
-    if title_shown != title || sub_shown != sub {
-        resp = resp.on_hover_text(format!("{title}\n{sub}"));
+/// The Home screen's primary and secondary actions, matching the other Craft apps.
+fn home_action(ui: &mut Ui, t: &Tokens, label: &str, primary: bool) -> bool {
+    let (rect, resp) = ui.allocate_exact_size(vec2(190.0_f32.min(ui.available_width()), 28.0), Sense::click());
+    a11y::button(&resp, label);
+    let radius = CornerRadius::same(14);
+    let fill = if primary { if resp.hovered() { t.accent_hover } else { t.accent } } else { t.panel };
+    ui.painter().rect_filled(rect, radius, fill);
+    if !primary {
+        ui.painter().rect_stroke(rect, radius, Stroke::new(1.0, t.border_strong), StrokeKind::Inside);
     }
-    card_frame(ui, t, r, &resp);
-    let ir = Rect::from_min_size(pos2(r.min.x + 16.0, r.center().y - 16.0), vec2(32.0, 32.0));
-    ui.painter().rect_filled(ir, CornerRadius::same(6), t.accent);
-    icons::paint(ui.painter(), ir.shrink(8.0), icon, t.accent_on);
-    ui.painter().text(pos2(r.min.x + 60.0, r.center().y - 8.0), Align2::LEFT_CENTER, title_shown, semibold(12.0), t.text);
-    ui.painter().text(pos2(r.min.x + 60.0, r.center().y + 9.0), Align2::LEFT_CENTER, sub_shown, regular(11.0), t.text_secondary);
+    ui.painter().text(rect.center(), Align2::CENTER_CENTER, label, semibold(12.5), if primary { t.accent_on } else { t.text });
+    focus_ring(ui, t, rect, &resp, 14);
     resp.clicked()
 }
 
 fn recents(app: &mut FigApp, ui: &mut Ui, t: &Tokens) {
-    heading(ui, t, tr("Recents"));
+    ui.label(egui::RichText::new("FigCraft").font(semibold(38.0)).color(t.text));
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new(tr("Create a new document or open an existing file.")).font(regular(14.0)).color(t.text_secondary));
+    ui.add_space(22.0);
     let (mut new_file, mut open) = (false, false);
-    ui.horizontal(|ui| {
-        new_file = action_card(ui, t, Icon::Plus, tr("New design file"), tr("Start from a blank canvas"));
-        open = action_card(ui, t, Icon::Page, tr("Open file"), tr("Open .figcraft, .svg or images"));
-    });
+    if ui.available_width() >= 392.0 {
+        ui.horizontal(|ui| {
+            new_file = home_action(ui, t, tr("New design file"), true);
+            ui.add_space(12.0);
+            open = home_action(ui, t, tr("Open file"), false);
+        });
+    } else {
+        new_file = home_action(ui, t, tr("New design file"), true);
+        ui.add_space(12.0);
+        open = home_action(ui, t, tr("Open file"), false);
+    }
     if new_file {
         app.run("file.new", json!({}));
         app.ui.home = false;

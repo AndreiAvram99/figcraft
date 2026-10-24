@@ -133,9 +133,6 @@ fn about_body(ui: &mut egui::Ui, t: &Tokens) {
         "Interface design and prototyping. A free, open-source, clean-room design tool written from scratch in Rust, part of the ArtCraft Crafting Apps.",
     ));
     ui.add_space(8.0);
-    ui.hyperlink_to("getartcraft.com/apps/figcraft", "https://getartcraft.com/apps/figcraft");
-    ui.hyperlink_to(tr("Join us on Discord"), "https://discord.gg/artcraft");
-    ui.add_space(8.0);
     ui.label(
         RichText::new(tr("Dual-licensed MIT OR Apache-2.0. Made by the ArtCraft team and community.")).color(t.text_secondary).font(regular(11.0)),
     );
