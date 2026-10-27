@@ -146,12 +146,24 @@ STAGE="$WORK/dmg"
 mkdir -p "$STAGE"
 ditto "$APP" "$STAGE/FigCraft.app"
 ln -s /Applications "$STAGE/Applications"
-rm -f "$DMG" "$WORK/raw.dmg"
-# makehybrid + convert builds the image without attaching a device, unlike `create -srcfolder`,
-# which is flaky on CI runners ("Resource busy") and hangs in sandboxed sessions.
-hdiutil makehybrid -hfs -hfs-volume-name "FigCraft" -hfs-openfolder "$STAGE" -o "$WORK/raw.dmg" "$STAGE"
-hdiutil convert "$WORK/raw.dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
-rm -f "$WORK/raw.dmg"
+mkdir -p "$STAGE/.background"
+cp "$HERE/dmg/background.tiff" "$STAGE/.background/background.tiff"
+cp "$HERE/dmg/dmg-layout.DS_Store" "$STAGE/.DS_Store"
+rm -f "$DMG"
+# Preserve the app signature and Finder artwork in the compressed image. makehybrid
+# adds FinderInfo to bundle files and can invalidate the Developer ID signature.
+created=0
+for attempt in 1 2 3 4 5; do
+  if hdiutil create -srcfolder "$STAGE" -volname "FigCraft" -fs HFS+ \
+      -format UDZO -imagekey zlib-level=9 -ov -o "$DMG"; then
+    created=1
+    break
+  fi
+  rm -f "$DMG"
+  [[ "$attempt" = 5 ]] && break
+  sleep $((attempt * 5))
+done
+[[ "$created" = 1 ]] || { echo "DMG creation failed" >&2; exit 1; }
 sign "$DMG"
 codesign --verify --strict --verbose=2 "$DMG"
 if [[ "$NOTARIZE" = 1 ]]; then
